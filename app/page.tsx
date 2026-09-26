@@ -59,7 +59,10 @@ export default function DispatchBoard() {
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("All priorities");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [settings, setSettings] = useState({ dailyLimit: 6, defaultView: "Dispatch", notifications: true });
   const [form, setForm] = useState({
     customer: "",
     address: "",
@@ -87,6 +90,20 @@ export default function DispatchBoard() {
   useEffect(() => {
     window.localStorage.setItem("field-dispatch-jobs", JSON.stringify(jobs));
   }, [jobs]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem("field-dispatch-settings");
+      if (!saved) return;
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") setSettings((current) => ({ ...current, ...parsed }));
+      } catch {
+        window.localStorage.removeItem("field-dispatch-settings");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -125,6 +142,14 @@ export default function DispatchBoard() {
     setToast("New job added to the board");
   }
 
+  function saveSettings(event: { preventDefault: () => void }) {
+    event.preventDefault();
+    window.localStorage.setItem("field-dispatch-settings", JSON.stringify(settings));
+    setActiveView(settings.defaultView);
+    setIsSettingsOpen(false);
+    setToast("Settings saved");
+  }
+
   return (
     <main className="dispatch-shell">
       <aside className="sidebar">
@@ -133,6 +158,7 @@ export default function DispatchBoard() {
           <div><strong>Routeboard</strong><small>FIELD OPERATIONS</small></div>
         </div>
         <div className="workspace-select"><span className="workspace-dot" /> Atlas Services <b>⌄</b></div>
+        <span className="sidebar-kicker">WORKSPACE</span>
         <nav className="side-nav" aria-label="Main navigation">
           {[
             ["Dispatch", "⌘"],
@@ -148,8 +174,11 @@ export default function DispatchBoard() {
         </nav>
         <div className="sidebar-spacer" />
         <div className="coverage-card"><span className="pulse-dot" /><div><b>Coverage is healthy</b><small>4 technicians online</small></div><span>↗</span></div>
-        <button className="settings-link"><span>⚙</span> Settings</button>
-        <div className="profile-chip"><div className="avatar avatar-indigo">DS</div><div><b>Dimitar Shopov</b><small>Dispatcher</small></div><span>•••</span></div>
+        <button className="settings-link" onClick={() => { setIsSettingsOpen(true); setIsAccountMenuOpen(false); }}><span>⚙</span><div><b>Settings</b><small>Workspace preferences</small></div><em>→</em></button>
+        <div className="profile-wrap">
+          <button className="profile-chip" onClick={() => setIsAccountMenuOpen((open) => !open)} aria-expanded={isAccountMenuOpen}><div className="avatar avatar-indigo">DS</div><div><b>Dimitar Shopov</b><small>Dispatcher</small></div><span className="profile-chevron">{isAccountMenuOpen ? "⌃" : "⌄"}</span></button>
+          {isAccountMenuOpen && <div className="profile-menu"><button onClick={() => { setIsAccountMenuOpen(false); setIsSettingsOpen(true); }}>Profile settings <span>↗</span></button><button onClick={() => { setIsAccountMenuOpen(false); setToast("Keyboard shortcuts are available in the full app"); }}>Keyboard shortcuts <span>⌘</span></button><button onClick={() => { setIsAccountMenuOpen(false); setToast("Demo session kept active"); }}>Keep demo session <span>✓</span></button></div>}
+        </div>
       </aside>
 
       <section className="main-panel">
@@ -208,10 +237,12 @@ export default function DispatchBoard() {
       </section>
 
       {isModalOpen && <div role="presentation" className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsModalOpen(false); }}><form className="job-modal" onSubmit={submitJob}><div className="modal-header"><div><span className="eyebrow">NEW WORK ORDER</span><h2>Create a job</h2></div><button type="button" onClick={() => setIsModalOpen(false)}>×</button></div><div className="form-grid"><label>Customer<input required value={form.customer} onChange={(event) => setForm({ ...form, customer: event.target.value })} placeholder="e.g. Northline Market" /></label><label>Service<select value={form.service} onChange={(event) => setForm({ ...form, service: event.target.value })}><option>General inspection</option><option>HVAC maintenance</option><option>Electrical repair</option><option>Plumbing callout</option><option>Equipment installation</option></select></label><label>Address<input required value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Street and number" /></label><label>Priority<select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value as Priority })}><option>Low</option><option>Normal</option><option>High</option><option>Urgent</option></select></label><label>Scheduled time<input type="time" value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label><label>Duration<select value={form.duration} onChange={(event) => setForm({ ...form, duration: event.target.value })}><option>30 min</option><option>60 min</option><option>90 min</option><option>120 min</option></select></label><label>Assign technician<select value={form.technician} onChange={(event) => setForm({ ...form, technician: event.target.value })}><option value="">Leave unassigned</option>{technicians.map((tech) => <option key={tech.name}>{tech.name}</option>)}</select></label><label className="wide-field">Job notes<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="What should the technician know?" rows={3} /></label></div><div className="modal-actions"><button type="button" className="ghost-button" onClick={() => setIsModalOpen(false)}>Cancel</button><button className="primary-action" type="submit">Create work order →</button></div></form></div>}
+      {isSettingsOpen && <div role="presentation" className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsSettingsOpen(false); }}><form className="job-modal settings-modal" onSubmit={saveSettings}><div className="modal-header"><div><span className="eyebrow">ROUTEBOARD SETTINGS</span><h2>Workspace preferences</h2></div><button type="button" onClick={() => setIsSettingsOpen(false)}>×</button></div><p className="settings-intro">Tune the board for the way your field team works. These preferences are saved in this browser.</p><div className="settings-list"><label>Maximum jobs per day<small>Used as the planning capacity for your dispatch team.</small><input type="number" min="1" max="24" value={settings.dailyLimit} onChange={(event) => setSettings({ ...settings, dailyLimit: Math.max(1, Math.min(24, Number(event.target.value) || 1)) })} /></label><label>Default workspace view<small>Choose which view opens when you save these preferences.</small><select value={settings.defaultView} onChange={(event) => setSettings({ ...settings, defaultView: event.target.value })}><option>Dispatch</option><option>Jobs</option><option>Technicians</option><option>Customers</option><option>Reports</option></select></label><label className="settings-toggle" aria-label="Operational notifications"><span><b>Operational notifications</b><small>Show lightweight confirmations after board actions.</small></span><input type="checkbox" checked={settings.notifications} onChange={(event) => setSettings({ ...settings, notifications: event.target.checked })} /><i /></label></div><div className="modal-actions"><button type="button" className="ghost-button" onClick={() => setIsSettingsOpen(false)}>Cancel</button><button className="primary-action" type="submit">Save preferences →</button></div></form></div>}
       {toast && <div className="toast-message">✓ {toast}</div>}
     </main>
   );
 }
+
 
 
 
