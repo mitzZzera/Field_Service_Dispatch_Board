@@ -211,7 +211,7 @@ export default function DispatchBoard() {
               {statuses.map((status) => {
                 const columnJobs = filteredJobs.filter((job) => job.status === status);
                 return <section className={"board-column " + status.toLowerCase().replace(" ", "-")} key={status}>
-                  <div className="column-heading"><div><span className="column-dot" /><h3>{status}</h3><b>{columnJobs.length}</b></div><button>•••</button></div>
+                  <div className="column-heading"><div><span className="column-dot" /><h3>{status}</h3><b>{columnJobs.length}</b></div><button onClick={() => setToast(`${status} column options opened`)} aria-label={`${status} column options`}>•••</button></div>
                   <div className="job-stack">
                     {columnJobs.map((job) => <article className="job-card" key={job.id}>
                       <div className="job-card-top"><span className="job-id">{job.id}</span><span className={"priority " + job.priority.toLowerCase()}>{job.priority}</span></div>
